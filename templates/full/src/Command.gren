@@ -1,0 +1,14 @@
+module Command exposing (Command(..), Error)
+
+import Cli.Report as Report exposing (Report)
+
+
+-- Commands are mapped in Main to modules under src/Command
+type Command
+    = Hello
+
+
+type alias Error =
+    { report : Report
+    , exitCode : Int
+    }

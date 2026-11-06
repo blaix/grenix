@@ -1,0 +1,25 @@
+module Tests.E2E exposing (tests)
+
+import ChildProcess
+import FileSystem
+import Meta
+import Test.Runner.Effectful as Effectful
+import Tests.E2E.Command.Hello
+import Tests.E2E.Main
+import Tests.E2E.Meta
+import Tests.E2E.Support
+
+
+tests :
+    { fsPerm : FileSystem.Permission
+    , procPerm : ChildProcess.Permission
+    }
+    -> Effectful.Test
+tests { fsPerm, procPerm } =
+    Effectful.await "compile the app" (Tests.E2E.Support.compile procPerm) <| \_ ->
+    Effectful.await "load package.json" (Meta.load fsPerm Tests.E2E.Support.appPath) <| \meta ->
+    Effectful.describe "E2E Tests"
+        [ Tests.E2E.Main.tests { fsPerm = fsPerm, procPerm = procPerm, meta = meta }
+        , Tests.E2E.Meta.tests { fsPerm = fsPerm, procPerm = procPerm }
+        , Tests.E2E.Command.Hello.tests { procPerm = procPerm, meta = meta }
+        ]

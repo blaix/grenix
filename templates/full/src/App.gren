@@ -1,0 +1,39 @@
+module App exposing (app)
+
+import Cli.Parser
+import Cli.PrettyPrinter as PP
+import Command exposing (Command)
+import Meta exposing (Meta)
+
+
+{-| App definition.
+
+Define's app details and all of the app's commands.
+
+It will have a similar UI/UX to the gren cli (since its using the same code!).
+
+See Cli.Parser in `gren-lang/node` for details.
+-}
+app : Meta -> Cli.Parser.App Command
+app meta =
+    -- meta info comes from package.json so it stays defined in one place
+    { name = meta.name
+    , version = meta.version
+    , intro = PP.words meta.description -- the top of the app's help text
+    , outro = PP.empty -- the bottom of the app's help text
+    , commands =
+        Cli.Parser.defineGroup
+            -- Repeat for each Command.*
+            |> Cli.Parser.withCommand
+                { word = "hello"
+                , arguments = Cli.Parser.noArgs
+                , flags = Cli.Parser.noFlags
+                -- If present, include the command under "most common commands"
+                -- in the app's help text, along with the description given:
+                , commonDescription = Just "Say hello."
+                -- The opening of the command's own help (my-app hello --help):
+                , summary = "Say hello."
+                , example = PP.words (meta.name ++ " hello")
+                , builder = \_args _flags -> Command.Hello
+                }
+    }

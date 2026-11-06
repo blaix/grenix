@@ -1,0 +1,82 @@
+module Meta exposing (Meta, load)
+
+import Bytes exposing (Bytes)
+import Dict
+import FileSystem
+import FileSystem.Path exposing (Path)
+import Json.Decode exposing (Decoder)
+import Task exposing (Task)
+
+
+type alias Meta =
+    { name : String
+    , version : String
+    , description : String
+    }
+
+
+{-| Load meta info from package.json
+
+This keeps everything (like app name and version number) in the same place.
+
+The executable name comes from the "bin" field in package.json
+
+npm and the nix package are both set up so package.json will be in the same
+directory as the app.
+-}
+load : FileSystem.Permission -> Path -> Task String Meta
+load fsPerm appPath =
+    let
+        packagePath =
+            FileSystem.Path.parentPath appPath
+                |> Maybe.withDefault FileSystem.Path.empty
+                |> FileSystem.Path.appendPosixString "package.json"
+
+        describeError error =
+            "I couldn't load "
+                ++ FileSystem.Path.toPosixString packagePath
+                ++ ": "
+                ++ error
+    in
+    FileSystem.readFile fsPerm packagePath
+        |> Task.mapError FileSystem.errorToString
+        |> Task.andThen decode
+        |> Task.mapError describeError
+
+
+decode : Bytes -> Task String Meta
+decode bytes =
+    when Json.Decode.decodeString decoder (Maybe.withDefault "" (Bytes.toString bytes)) is
+        Ok meta ->
+            Task.succeed meta
+
+        Err error ->
+            Task.fail (Json.Decode.errorToString error)
+
+
+decoder : Decoder Meta
+decoder =
+    Json.Decode.map3
+        (\name version description ->
+            { name = name
+            , version = version
+            , description = description
+            }
+        )
+        (Json.Decode.field "bin" binNameDecoder)
+        (Json.Decode.field "version" Json.Decode.string)
+        (Json.Decode.field "description" Json.Decode.string)
+
+
+binNameDecoder : Decoder String
+binNameDecoder =
+    Json.Decode.dict Json.Decode.string
+        |> Json.Decode.andThen
+            (\bins ->
+                when Array.first (Dict.keys bins) is
+                    Just name ->
+                        Json.Decode.succeed name
+
+                    Nothing ->
+                        Json.Decode.fail "Expected at least one command in `bin`"
+            )

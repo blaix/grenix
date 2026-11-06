@@ -1,0 +1,11 @@
+module Tests.Unit exposing (tests)
+
+import Test exposing (Test, describe)
+import Tests.Unit.App
+
+
+tests : Test
+tests =
+    describe "Unit Tests"
+        [ Tests.Unit.App.tests
+        ]

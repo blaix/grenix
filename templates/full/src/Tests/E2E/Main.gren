@@ -1,0 +1,85 @@
+module Tests.E2E.Main exposing (tests)
+
+import Bytes
+import ChildProcess
+import Expect
+import FileSystem
+import FileSystem.Path
+import Json.Decode
+import Meta exposing (Meta)
+import Task exposing (Task)
+import Test.Runner.Effectful exposing (Test, await, describe, test)
+import Tests.E2E.Support as Support
+
+
+tests :
+    { fsPerm : FileSystem.Permission
+    , procPerm : ChildProcess.Permission
+    , meta : Meta
+    }
+    -> Test
+tests { fsPerm, procPerm, meta } =
+    let
+        awaitRun args =
+            await
+                ("app " ++ (String.join " " args))
+                (Support.runApp procPerm args)
+    in
+    describe "Main"
+        [ awaitRun [] <| \result ->
+          test "with no arguments, prints help" <| \_ ->
+            expectHelp meta result
+        , awaitRun [ "--help" ] <| \result ->
+          test "prints help" <| \_ ->
+            expectHelp meta result
+        , await "read package.json" (packageVersion fsPerm) <| \version ->
+          awaitRun [ "--version" ] <| \result ->
+          test "prints the version from package.json" <| \_ ->
+            result
+                |> Expect.equal
+                    { exitCode = 0
+                    , stdout = version ++ "\n"
+                    , stderr = ""
+                    }
+        , awaitRun [ "nope" ] <| \result ->
+          test "reports an unknown command" <| \_ ->
+            result
+                |> Expect.all
+                    [ .exitCode >> Expect.equal 1
+                    , .stdout >> Expect.equal ""
+                    , .stderr >> Support.expectContains "I don't recognize this command: nope"
+                    ]
+        ]
+
+
+expectHelp : Meta -> Support.Run -> Expect.Expectation
+expectHelp meta =
+    Expect.all
+        [ .exitCode >> Expect.equal 0
+        , .stdout >> Support.expectContains meta.description
+        , .stdout >> Support.expectContains (meta.name ++ " hello")
+        , .stderr >> Expect.equal ""
+        ]
+
+
+packageVersion : FileSystem.Permission -> Task String String
+packageVersion fsPerm =
+    let
+        decoder =
+            Json.Decode.field "version" Json.Decode.string
+    in
+    FileSystem.readFile fsPerm (FileSystem.Path.fromPosixString "package.json")
+        |> Task.mapError FileSystem.errorToString
+        |> Task.andThen
+            (\bytes ->
+                when
+                    Bytes.toString bytes
+                        |> Maybe.withDefault ""
+                        |> Json.Decode.decodeString decoder
+                is
+                    Ok version ->
+                        Task.succeed version
+
+                    Err error ->
+                        Task.fail (Json.Decode.errorToString error)
+            )

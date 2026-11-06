@@ -1,0 +1,57 @@
+module Tests.E2E.Meta exposing (tests)
+
+import ChildProcess
+import Expect
+import FileSystem
+import FileSystem.Path
+import Task exposing (Task)
+import Test.Runner.Effectful exposing (Test, await, describe, test)
+import Tests.E2E.Support as Support
+
+
+tests :
+    { fsPerm : FileSystem.Permission
+    , procPerm : ChildProcess.Permission
+    }
+    -> Test
+tests { fsPerm, procPerm } =
+    let
+        runAt workingDirectory path args =
+            Support.runAppAt
+                procPerm
+                { workingDirectory = ChildProcess.SetWorkingDirectory workingDirectory
+                , path = path
+                }
+                args
+    in
+    describe "Meta edge cases"
+        [ await "run `app --version` from another directory" (runAt "src" "../app" []) <| \result ->
+          test "succeeds" <| \_ ->
+            result
+                |> Expect.all
+                    [ .exitCode >> Expect.equal 0
+                    , .stderr >> Expect.equal ""
+                    ]
+        , await "copy the app away from package.json" (copyApp fsPerm) <| \_ ->
+          await "run `app hello` without package.json" (runAt "" copiedAppPath [ "hello" ]) <| \result ->
+          test "fails, reporting the missing file" <| \_ ->
+            result
+                |> Expect.all
+                    [ .exitCode >> Expect.equal 1
+                    , .stdout >> Expect.equal ""
+                    , .stderr >> Support.expectContains "package.json"
+                    ]
+        ]
+
+
+copiedAppPath : String
+copiedAppPath =
+    -- hijacking .gren dir since we know it exists and it's gitignored
+    ".gren/e2e-app-without-package-json"
+
+
+copyApp : FileSystem.Permission -> Task String FileSystem.Path.Path
+copyApp fsPerm =
+    Support.appPath
+        |> FileSystem.copyFile fsPerm (FileSystem.Path.fromPosixString copiedAppPath)
+        |> Task.mapError FileSystem.errorToString

@@ -1,0 +1,105 @@
+module Tests.E2E.Support exposing
+    ( Run
+    , appPath
+    , compile
+    , expectContains
+    , runApp
+    , runAppAt
+    )
+
+import Bytes exposing (Bytes)
+import ChildProcess
+import Expect exposing (Expectation)
+import FileSystem.Path exposing (Path)
+import Task exposing (Task)
+
+
+type alias Run =
+    { exitCode : Int
+    , stdout : String
+    , stderr : String
+    }
+
+
+appPath : Path
+appPath =
+    FileSystem.Path.fromPosixString "app"
+
+
+compile : ChildProcess.Permission -> Task ChildProcess.FailedRun ChildProcess.SuccessfulRun
+compile procPerm =
+    ChildProcess.run
+        procPerm
+        "gren"
+        [ "make"
+        , "Main"
+        , "--output=" ++ FileSystem.Path.toPosixString appPath
+        ]
+        ChildProcess.defaultRunOptions
+
+
+runApp : ChildProcess.Permission -> Array String -> Task String Run
+runApp procPerm args =
+    runAppAt
+        procPerm
+        { workingDirectory = ChildProcess.InheritWorkingDirectory
+        , path = FileSystem.Path.toPosixString appPath
+        }
+        args
+
+
+{-| Run app from the specified directory.
+    Example:
+        -- If app is at ./app and we run it from ./some/directory:
+        runAppAt
+            procPerm
+            { workingDirectory = "./some/directory"
+            , path = "../../app" 
+            }
+            [ "arg1", "arg2" ]
+-}
+runAppAt :
+    ChildProcess.Permission
+    ->
+        { workingDirectory : ChildProcess.WorkingDirectory
+        , path : String
+        }
+    -> Array String
+    -> Task String Run
+runAppAt procPerm { workingDirectory, path } args =
+    ChildProcess.run procPerm
+        "node" -- Runs through node because the nix sandbox has no /usr/bin/env
+        (Array.pushFirst path args)
+        { ChildProcess.defaultRunOptions | workingDirectory = workingDirectory }
+        |> Task.map
+            (\run ->
+                { exitCode = 0
+                , stdout = decode run.stdout
+                , stderr = decode run.stderr
+                }
+            )
+        |> Task.onError
+            (\failure ->
+                when failure is
+                    ChildProcess.ProgramError run ->
+                        Task.succeed
+                            { exitCode = run.exitCode
+                            , stdout = decode run.stdout
+                            , stderr = decode run.stderr
+                            }
+
+                    ChildProcess.InitError { errorCode } ->
+                        Task.fail errorCode
+            )
+
+
+decode : Bytes -> String
+decode bytes =
+    Bytes.toString bytes
+        |> Maybe.withDefault ""
+
+
+expectContains : String -> String -> Expectation
+expectContains inner outer =
+    String.contains inner outer
+        |> Expect.equal True

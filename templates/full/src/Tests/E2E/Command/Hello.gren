@@ -1,0 +1,55 @@
+module Tests.E2E.Command.Hello exposing (tests)
+
+import ChildProcess
+import Expect exposing (Expectation)
+import Meta exposing (Meta)
+import Test.Runner.Effectful exposing (Test, await, describe, test)
+import Tests.E2E.Support as Support
+
+
+tests :
+    { procPerm : ChildProcess.Permission
+    , meta : Meta
+    }
+    -> Test
+tests { procPerm, meta } =
+    let
+        awaitRun args =
+            await
+                ("app " ++ (String.join " " args))
+                (Support.runApp procPerm args)
+    in
+    describe "Command.Hello"
+        [ awaitRun [ "hello" ] <| \result ->
+          test "prints the greeting" <| \_ ->
+            result
+                |> Expect.equal
+                    { exitCode = 0
+                    , stdout = "Hello. I like you and I love you.\n"
+                    , stderr = ""
+                    }
+        , awaitRun [ "hello", "--help" ] <| \result ->
+          test "prints command help" <| \_ ->
+            result
+                |> Expect.all
+                    [ .exitCode >> Expect.equal 0
+                    , .stdout >> Support.expectContains (meta.name ++ " hello")
+                    , .stderr >> Expect.equal ""
+                    ]
+        , awaitRun [ "hello", "extra" ] <| \result ->
+          test "reports unexpected arguments" <| \_ ->
+            result
+                |> Expect.all
+                    [ .exitCode >> Expect.equal 1
+                    , .stdout >> Expect.equal ""
+                    , .stderr >> Support.expectContains "expecting 0 arguments"
+                    ]
+        , awaitRun [ "hello", "--bad" ] <| \result ->
+          test "reports unknown flags" <| \_ ->
+            result
+                |> Expect.all
+                    [ .exitCode >> Expect.equal 1
+                    , .stdout >> Expect.equal ""
+                    , .stderr >> Support.expectContains "--bad"
+                    ]
+        ]

@@ -1,0 +1,142 @@
+module Main exposing (main)
+
+import App
+import Bytes exposing (Bytes)
+import Cli.Parser
+import Cli.PrettyPrinter as PP
+import Cli.Report as Report
+import Command
+import Command.Hello
+import Dict
+import FileSystem
+import FileSystem.Path
+import Init
+import Meta exposing (Meta)
+import Node
+import Stream
+import Stream.Log
+import Task exposing (Task)
+import Terminal
+
+
+main : Node.Program Model Msg
+main =
+    Node.defineProgram
+        { init = init
+        , update = update
+        , subscriptions = \_model -> Sub.none
+        }
+
+
+type alias Model =
+    { stdout : Stream.Writable Bytes
+    , stderr : Stream.Writable Bytes
+    , useColor : Bool
+    }
+
+
+type Msg
+    = RanCommand (Result Command.Error PP.Document)
+
+
+init : Node.Environment -> Init.Task { model : Model, command : Cmd Msg }
+init env =
+    let
+        args =
+            -- first two are node and application path
+            Array.dropFirst 2 env.args
+    in
+    Init.await FileSystem.initialize <| \fsPerm ->
+    Init.await Terminal.initialize <| \terminalConfig ->
+    Init.awaitTask Node.getEnvironmentVariables <| \envVars ->
+        Node.startProgram
+            { model =
+                { stdout = env.stdout
+                , stderr = env.stderr
+                , useColor =
+                    terminalConfig /= Nothing
+                        && not (Dict.member "NO_COLOR" envVars)
+                }
+            , command =
+                Meta.load fsPerm env.applicationPath
+                    |> Task.mapError metaError
+                    |> Task.andThen (\meta -> parseAndRun meta args)
+                    |> Task.attempt RanCommand
+            }
+
+
+parseAndRun : Meta -> Array String -> Task Command.Error PP.Document
+parseAndRun meta args =
+    when Cli.Parser.run (App.app meta) args is
+        Cli.Parser.Success Command.Hello ->
+            Command.Hello.run
+
+        Cli.Parser.HelpText document ->
+            Task.succeed document
+
+        Cli.Parser.UnknownCommand name ->
+            "I don't recognize this command: " ++ name
+                |> PP.words
+                |> usageError
+                |> Task.fail
+
+        Cli.Parser.BadArguments error ->
+            error
+                |> Cli.Parser.argumentErrorPrettified
+                |> usageError
+                |> Task.fail
+
+        Cli.Parser.BadFlags error ->
+            error
+                |> Cli.Parser.flagErrorPrettified
+                |> usageError
+                |> Task.fail
+
+
+metaError : String -> Command.Error
+metaError message =
+    { exitCode = 1
+    , report =
+        Report.create
+            "BAD PACKAGE METADATA"
+            Nothing
+            (PP.words message)
+    }
+
+
+usageError : PP.Document -> Command.Error
+usageError message =
+    { exitCode = 1
+    , report =
+        Report.create
+            "BAD USAGE"
+            Nothing
+            message
+    }
+
+
+update : Msg -> Model -> { model : Model, command : Cmd Msg }
+update msg model =
+    when msg is
+        RanCommand (Ok document) ->
+            { model = model
+            , command =
+                document
+                    |> Report.prettyPrint { useColor = model.useColor }
+                    |> Stream.Log.line model.stdout
+                    |> Task.execute
+            }
+
+        RanCommand (Err error) ->
+            { model = model
+            , command =
+                -- Node.exitWithCode wouldn't wait for the report to be written.
+                Node.setExitCode error.exitCode
+                    |> Task.andThen
+                        (\_ ->
+                            error.report
+                                |> Report.toString (Report.Terminal { useColor = False }) FileSystem.Path.toPosixString
+                                |> Stream.Log.string model.stderr
+                        )
+                    |> Task.execute
+            }

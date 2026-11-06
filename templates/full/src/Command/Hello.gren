@@ -1,0 +1,10 @@
+module Command.Hello exposing (run)
+
+import Cli.PrettyPrinter as PP
+import Command
+import Task exposing (Task)
+
+
+run : Task Command.Error PP.Document
+run =
+    Task.succeed (PP.text "Hello. I like you and I love you.")

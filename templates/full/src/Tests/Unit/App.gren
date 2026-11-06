@@ -1,0 +1,29 @@
+module Tests.Unit.App exposing (tests)
+
+import App
+import Cli.Parser
+import Command
+import Expect
+import Meta exposing (Meta)
+import Test exposing (Test, describe, test)
+
+
+tests : Test
+tests =
+    describe "App"
+        [ test "parses the hello command" <| \_ ->
+            when Cli.Parser.run (App.app meta) [ "hello" ] is
+                Cli.Parser.Success Command.Hello ->
+                    Expect.pass
+
+                _ ->
+                    Expect.fail "expected the hello command"
+        ]
+
+
+meta : Meta
+meta =
+    { name = "test-app"
+    , version = "1.2.3"
+    , description = "A test app."
+    }

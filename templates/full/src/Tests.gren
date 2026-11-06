@@ -1,0 +1,23 @@
+module Tests exposing (main)
+
+import ChildProcess
+import FileSystem
+import Init
+import Node
+import Test.Runner.Effectful as Effectful
+import Tests.E2E
+import Tests.Unit
+
+
+main : Node.SimpleProgram a
+main =
+    Node.defineSimpleProgram <| \env ->
+    Init.await FileSystem.initialize <| \fsPerm ->
+    Init.await ChildProcess.initialize <| \procPerm ->
+    Effectful.initialize env <| \config ->
+        Effectful.concat
+            [ Effectful.wrap Tests.Unit.tests
+            , Tests.E2E.tests { fsPerm = fsPerm, procPerm = procPerm }
+            ]
+            |> Effectful.run config
+            |> Node.endSimpleProgram
