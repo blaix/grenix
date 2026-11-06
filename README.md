@@ -13,7 +13,7 @@ nix flake init -t github:blaix/grenix#full   # complete foundation for a command
 `full` will start you off with a well-structured command line application with:
 
 - Commands, argument parsing, help text, and error reports using the same modules the Gren compiler uses
-- Isolated command modules (see [`src/Command/Hello.gren`](src/Command/Hello.gren) for an example)
+- Isolated command modules (see [`src/Command/Hello.gren`](templates/full/src/Command/Hello.gren) for an example)
 - Unit tests, and E2E tests that run the real commands and check their exit codes and output
 - `package.json` as a single source of truth for the package name, executable name, version, and description for both nix and npm
 
