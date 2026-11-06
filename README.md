@@ -1,6 +1,6 @@
 # Grenix
 
-Flake templates for creating a Gren command line application that can be run or installed with nix flakes or npm.
+Flake templates for creating a command line applications with [Gren](https://gren-lang.org/) that can be run or installed with nix flakes or npm.
 
 ```sh
 mkdir my-app && cd my-app
