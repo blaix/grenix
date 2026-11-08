@@ -32,16 +32,7 @@ Edit these values after installing the template:
   ...
 ```
 
-You can install and run your program as a nix flake:
-
-```
-nix run .
-```
-
-Or upload to a public git repository and anyone can run or install your flake
-from anywhere. If its on github, it can use the github shorthand. For example,
-I pushed an example of the minimal template to `blaix/grenix-example`, so you
-can run it with:
+You can install and run your program as a [nix flake](https://wiki.nixos.org/wiki/Flakes). If you upload to a public git repository, anyone can run or install your flake from anywhere. If it's on github, they can use the github shorthand. For example, I pushed an example of the minimal template to `blaix/grenix-example`, so you can run it with:
 
 ```
 nix run github:blaix/grenix-example
@@ -53,8 +44,7 @@ or a specific tag, commit, or branch by appending it to the end:
 nix run github:blaix/grenix-example/bye
 ```
 
-You can also `npm publish` your program so people can install and run it with
-`npm` or `npx` from anywhere, without nix.
+Your project will also be set up so you can `npm publish` your program so people can install and run it with `npm` or `npx` from anywhere, without nix.
 
 You can see what you get from each template by viewing the files under [`templates/`](templates/).
 
