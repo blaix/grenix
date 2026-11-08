@@ -23,11 +23,11 @@ Edit these values after installing the template:
 
 ```json
 {
-  "name": <package name>,
-  "version": <version>,
-  "description": <description>,
+  "name": "<package name>",
+  "version": "<version>",
+  "description": "<description>",
   "bin": {
-    <executable name>: "app"
+    "<executable name>": "app"
   },
   ...
 ```
