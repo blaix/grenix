@@ -15,7 +15,7 @@ nix flake init -t github:blaix/grenix#full   # complete foundation for a command
 
 - Argument parsing, help text, error reports, and styled output using the same modules the Gren compiler uses
 - Isolated modules for your app's commands (e.g. `my-app hello` runs [`src/Command/Hello.gren`](templates/full/src/Command/Hello.gren))
-- [E2E tests](https://github.com/blaix/grenix/blob/main/templates/full/src/Tests/E2E/Command/Hello.gren) that run the real commands and check their exit codes and output
+- [E2E tests](templates/full/src/Tests/E2E/Command/Hello.gren) that run the real commands and check their exit codes and output
 
 `package.json` will be the single source of truth for the package name,
 executable name, version, and description for both nix and npm.
