@@ -1,6 +1,7 @@
 # Grenix
 
-Flake templates for creating a command line applications with [Gren](https://gren-lang.org/) that can be run or installed with nix flakes or npm.
+Flake templates for creating command line applications with
+[Gren](https://gren-lang.org/) that can be used with nix flakes or npm.
 
 ```sh
 mkdir my-app && cd my-app
@@ -15,7 +16,45 @@ nix flake init -t github:blaix/grenix#full   # complete foundation for a command
 - Commands, argument parsing, help text, and error reports using the same modules the Gren compiler uses
 - Isolated command modules (see [`src/Command/Hello.gren`](templates/full/src/Command/Hello.gren) for an example)
 - Unit tests, and E2E tests that run the real commands and check their exit codes and output
-- `package.json` as a single source of truth for the package name, executable name, version, and description for both nix and npm
+
+`package.json` will be the single source of truth for the package name,
+executable name, version, and description for both nix and npm.
+Edit these values after installing the template:
+
+```json
+{
+  "name": <package name>,
+  "version": <version>,
+  "description": <description>,
+  "bin": {
+    <executable name>: "app"
+  },
+  ...
+```
+
+You can install and run your program as a nix flake:
+
+```
+nix run .
+```
+
+Or upload to a public git repository and anyone can run or install your flake
+from anywhere. If its on github, it can use the github shorthand. For example,
+I pushed an example of the minimal template to `blaix/grenix-example`, so you
+can run it with:
+
+```
+nix run github:blaix/grenix-example
+```
+
+or a specific tag, commit, or branch by appending it to the end:
+
+```
+nix run github:blaix/grenix-example/bye
+```
+
+You can also `npm publish` your program so people can install and run it with
+`npm` or `npx` from anywhere, without nix.
 
 You can see what you get from each template by viewing the files under [`templates/`](templates/).
 
