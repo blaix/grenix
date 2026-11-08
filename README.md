@@ -9,7 +9,7 @@ nix flake init -t github:blaix/grenix        # minimal (the default)
 nix flake init -t github:blaix/grenix#full   # complete foundation for a command-line app
 ```
 
-`minimal` is just a hello world.
+`minimal` is just a hello world using `SimpleProgram`.
 
 `full` will start you off with a well-structured command line application with:
 
